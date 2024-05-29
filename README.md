@@ -7,9 +7,6 @@ conda create -n [ENV NAME] python=3.11
 conda activate [ENV NAME]
 ```
 
-```bash
-pip install -r requirements.txt
-```
 ## MacOS
 To enable `mps` acceleration
 
@@ -22,4 +19,9 @@ To enable `cuda` acceleration
 
 ```
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
+
+
+```bash
+pip install -r requirements.txt
 ```
