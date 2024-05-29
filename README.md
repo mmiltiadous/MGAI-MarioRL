@@ -22,6 +22,3 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 ```
 
 
-```bash
-pip install -r requirements.txt
-```
