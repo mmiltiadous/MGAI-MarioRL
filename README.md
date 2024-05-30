@@ -3,8 +3,15 @@
 # Environment 
 
 ```bash
-conda create -n [ENV NAME] python=3.11
+conda create -n [ENV NAME] python=3.8
 conda activate [ENV NAME]
+```
+
+```bash
+pip install pip==22.0.4 setuptools==59.8.0 wheel==0.37.1
+pip install gym==0.21
+pip install 'stable-baselines3[extra]'==1.6.0
+pip install gym-super-mario-bros==7.3.0
 ```
 
 ## MacOS
