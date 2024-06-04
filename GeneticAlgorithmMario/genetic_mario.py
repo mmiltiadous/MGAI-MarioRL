@@ -122,7 +122,7 @@ def play_game(indiv, env, render=False):
         if done:
             break
 
-    indiv.fitness = total_reward + info['x_pos']
+    indiv.fitness = total_reward 
     indiv.score = info['score']
     indiv.x_pos = info['x_pos']
     indiv.flag = info['flag_get']
