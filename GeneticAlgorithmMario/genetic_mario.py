@@ -17,10 +17,9 @@ GENERATION_SIZE = 50
 POPULATION_SIZE = 50
 TOURNAMENT_SIZE = 20
 JUMP_WEIGHT = 0.95
-RIGHT_WEIGHT = 0.9
 MUTATION_RATE_0 = 0.05
 MUTATION_RATE_1 = 0.15
-MODELS_DIR = "models/"
+MODELS_DIR = "models/" #Change for testing other levels except 1-1
 LOGS_DIR = "logs/"
 LOG_FILE = os.path.join(LOGS_DIR, "training_log.csv")
 # Ensure directories exist
@@ -130,29 +129,24 @@ def play_game(indiv, env, render=False):
 
 
  
-def save_model(indiv, generation):
-    model_path = os.path.join(MODELS_DIR, f"best_model_gen_{generation}.npy")
+def save_model(indiv, generation, index):
+    model_path = os.path.join(MODELS_DIR, f"best_model_gen_{generation}_{index}.npy")
     np.save(model_path, indiv.bytes)
     print(f"Saved best model of generation {generation} with fitness {indiv.fitness}")
 
-def log_metrics(generation, mean_fitness, std_fitness, best_fitness, time_taken):
+
+def log_metrics(generation, mean_fitness, std_fitness, best_fitness, worst_fitness, median_fitness, fitness_improvement, diversity, avg_frame_number, time_taken):
     with open(LOG_FILE, 'a', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow([generation, mean_fitness, std_fitness, best_fitness, time_taken])
+        writer.writerow([generation, mean_fitness, std_fitness, best_fitness, worst_fitness, median_fitness, fitness_improvement, diversity, avg_frame_number, time_taken])
     print(f"Logged metrics for generation {generation}")
 
 
-def get_latest_model():
-    model_files = [f for f in os.listdir(MODELS_DIR) if f.startswith("best_model_gen_") and f.endswith(".npy")]
-    if not model_files:
-        return None
-    latest_model_file = max(model_files, key=lambda f: int(f.split('_')[-1].split('.')[0]))
-    # latest_model_file = 'best_model_gen_16.npy'
-    return os.path.join(MODELS_DIR, latest_model_file)
 
-# def get_specific_model():
-#     latest_model_file = 'best_model_gen_16.npy'
-#     return os.path.join(MODELS_DIR, latest_model_file)
+
+def get_specific_model():
+    latest_model_file = 'best_model_gen_best.npy' #Change for testing othe models
+    return os.path.join(MODELS_DIR, latest_model_file)
 
 def load_model(model_path):
     bytes = np.load(model_path)
@@ -162,23 +156,28 @@ def load_model(model_path):
 
 
 
-def test_best_model():
-    env = gym_super_mario_bros.make('SuperMarioBros-1-1-v0')
+def test_specific_model():
+    env = gym_super_mario_bros.make('SuperMarioBros-1-1-v3') #Change for other levels
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
-    latest_model_path = get_latest_model()
-    # latest_model_path = get_specific_model() # for specifying the model you want to test speciffically
-    if latest_model_path:
-        best_individual = load_model(latest_model_path)
-        print(f"Testing the best individual from {latest_model_path}")
-        indiv = play_game(best_individual, env, render=True)
+    model_path = get_specific_model() # for specifying the model you want to test speciffically
+    if model_path:
+        _individual = load_model(model_path)
+        print(f"Testing the individual from {model_path}")
+        indiv = play_game(_individual, env, render=True)
         print('Score:', indiv.score,'X position:', indiv.x_pos,'Fitness:',indiv.fitness, 'Caprure the flug?', indiv.flag )
     else:
         print("No model found to load.")
 
 
+def compute_diversity(population):
+    distances = []
+    for i in range(len(population)):
+        for j in range(i + 1, len(population)):
+            distances.append(np.sum(population[i].bytes != population[j].bytes))
+    return np.mean(distances)
 
 def main():
-    env = gym_super_mario_bros.make('SuperMarioBros-1-1-v0')
+    env = gym_super_mario_bros.make('SuperMarioBros-1-1-v3') #Change for other levels
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
     population = generateRandomPopulation()
     generation = 0
@@ -189,7 +188,9 @@ def main():
     if not os.path.exists(LOG_FILE):
         with open(LOG_FILE, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(['Generation', 'MeanFitness', 'StdFitness', 'BestFitness', 'TimeTaken'])
+            writer.writerow(['Generation', 'MeanFitness', 'StdFitness', 'BestFitness', 'WorstFitness', 'MedianFitness', 'FitnessImprovement', 'Diversity', 'AvgFrameNumber', 'TimeTaken'])
+
+    previous_best_fitness = 0
 
     while True:
         start_time = time.time()
@@ -197,23 +198,37 @@ def main():
         print(f'Generation: {generation}')
         
         fitness_scores = []
+        frame_numbers = []
+
         for i, indiv in enumerate(population):
             time1 = time.time()
             current_indiv = play_game(indiv, env)
             fitness = current_indiv.fitness
             fitness_scores.append(fitness)
+            frame_numbers.append(indiv.frameNumber)
+
             if fitness > best_fitness:
                 best_fitness = fitness
                 best_individual = indiv
-                save_model(best_individual, generation)
+                save_model(best_individual, generation,i)
+
+
             time2=time.time()-time1
             print(f'Individual {i+1} Fitness: {fitness} Time: {time2}')
 
+
         mean_fitness = np.mean(fitness_scores)
         std_fitness = np.std(fitness_scores)
+        worst_fitness = np.min(fitness_scores)
+        median_fitness = np.median(fitness_scores)
+        fitness_improvement = best_fitness - previous_best_fitness
+        previous_best_fitness = best_fitness
+        diversity = compute_diversity(population)
+        avg_frame_number = np.mean(frame_numbers)
         time_taken = time.time() - start_time
 
-        log_metrics(generation, mean_fitness, std_fitness, best_fitness, time_taken)
+
+        log_metrics(generation, mean_fitness, std_fitness, best_fitness, worst_fitness, median_fitness, fitness_improvement, diversity, avg_frame_number, time_taken)
 
         print(f'Best Fitness: {best_fitness}')
         population = evolvePopulation(population)
@@ -225,6 +240,6 @@ def main():
     env.close()
 
 if __name__ == "__main__":
-    # main()
+    # main() #Trainig-->#Comment this for testing specific model
 
-    test_best_model()
+    test_specific_model() #Testing
